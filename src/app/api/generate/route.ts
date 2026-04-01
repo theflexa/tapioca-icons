@@ -74,51 +74,79 @@ export async function POST(request: NextRequest) {
     })
     .returning();
 
-  try {
-    // Generate keyframes
-    const keyframes: string[] = [];
-    let provider: string | undefined;
+  // Stream keyframes one by one using NDJSON
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const keyframes: string[] = [];
+        let provider: string | undefined;
 
-    for (let i = 0; i < totalKeyframes; i++) {
-      const styledPrompt = buildStylePrompt(filtered.sanitized, {
-        accentColor: body.accentColor,
-        animationType,
-        keyframeIndex: i,
-        totalKeyframes,
-      });
+        for (let i = 0; i < totalKeyframes; i++) {
+          const styledPrompt = buildStylePrompt(filtered.sanitized, {
+            accentColor: body.accentColor,
+            animationType,
+            keyframeIndex: i,
+            totalKeyframes,
+          });
 
-      const result = await generateImage(styledPrompt);
-      keyframes.push(result.base64);
+          // Send progress event
+          controller.enqueue(
+            encoder.encode(
+              JSON.stringify({ type: "progress", current: i + 1, total: totalKeyframes }) + "\n"
+            )
+          );
 
-      if (i === 0) {
-        provider = result.provider;
+          const result = await generateImage(styledPrompt);
+          keyframes.push(result.base64);
+
+          if (i === 0) {
+            provider = result.provider;
+          }
+        }
+
+        // Update generation status
+        await db
+          .update(generations)
+          .set({
+            status: "completed",
+            framesCount: totalKeyframes,
+            provider: provider,
+          })
+          .where(eq(generations.id, generation.id));
+
+        // Send final result
+        controller.enqueue(
+          encoder.encode(
+            JSON.stringify({
+              type: "result",
+              id: generation.id,
+              keyframes,
+              params: styleParams,
+            }) + "\n"
+          )
+        );
+        controller.close();
+      } catch {
+        await db
+          .update(generations)
+          .set({ status: "failed" })
+          .where(eq(generations.id, generation.id));
+
+        controller.enqueue(
+          encoder.encode(
+            JSON.stringify({ type: "error", error: "Failed to generate icon" }) + "\n"
+          )
+        );
+        controller.close();
       }
-    }
+    },
+  });
 
-    // Update generation status
-    await db
-      .update(generations)
-      .set({
-        status: "completed",
-        framesCount: totalKeyframes,
-        provider: provider,
-      })
-      .where(eq(generations.id, generation.id));
-
-    return NextResponse.json({
-      id: generation.id,
-      keyframes,
-      params: styleParams,
-    });
-  } catch (error) {
-    await db
-      .update(generations)
-      .set({ status: "failed" })
-      .where(eq(generations.id, generation.id));
-
-    return NextResponse.json(
-      { error: "Failed to generate icon" },
-      { status: 500 }
-    );
-  }
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/x-ndjson",
+      "Transfer-Encoding": "chunked",
+    },
+  });
 }

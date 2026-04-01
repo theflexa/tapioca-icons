@@ -20,6 +20,7 @@ export function Generator() {
   const [prompt, setPrompt] = useState("");
   const [style, setStyle] = useState<StyleParams>(DEFAULT_STYLE);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [frames, setFrames] = useState<Uint8Array | null>(null);
   const [frameCount, setFrameCount] = useState(0);
@@ -32,6 +33,7 @@ export function Generator() {
     setLoading(true);
     setError(null);
     setFrames(null);
+    setProgress(null);
 
     try {
       const res = await fetch("/api/generate", {
@@ -47,12 +49,42 @@ export function Generator() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Generation failed");
+        const text = await res.text();
+        try {
+          const data = JSON.parse(text);
+          throw new Error(data.error || "Generation failed");
+        } catch {
+          throw new Error("Generation failed");
+        }
       }
 
-      const data = await res.json();
-      const keyframes: string[] = data.keyframes;
+      // Read NDJSON stream
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let keyframes: string[] = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop()!;
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const msg = JSON.parse(line);
+
+          if (msg.type === "progress") {
+            setProgress({ current: msg.current, total: msg.total });
+          } else if (msg.type === "result") {
+            keyframes = msg.keyframes;
+          } else if (msg.type === "error") {
+            throw new Error(msg.error);
+          }
+        }
+      }
 
       // Decode base64 keyframes to raw RGBA pixel data
       const keyframePixels: Uint8Array[] = await Promise.all(
@@ -91,6 +123,7 @@ export function Generator() {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   };
 
@@ -105,8 +138,25 @@ export function Generator() {
           disabled={loading || !prompt.trim()}
           className="w-full py-3 bg-orange-600 hover:bg-orange-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded-lg font-medium transition-colors"
         >
-          {loading ? "Generating..." : "Generate Icon"}
+          {loading
+            ? progress
+              ? `Generating keyframe ${progress.current}/${progress.total}...`
+              : "Starting..."
+            : "Generate Icon"}
         </button>
+        {loading && progress && (
+          <div className="w-full">
+            <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(progress.current / progress.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-zinc-500 mt-1 text-center">
+              Generating keyframe {progress.current} of {progress.total}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Error */}
