@@ -37,3 +37,14 @@ export async function encodePng(
   const wasm = await getWasm();
   return wasm.encode_png(frameData, width, height);
 }
+
+export async function encodeApng(
+  framesData: Uint8Array,
+  width: number,
+  height: number,
+  frameCount: number,
+  fps: number
+): Promise<Uint8Array> {
+  const wasm = await getWasm();
+  return wasm.encode_apng_frames(framesData, width, height, frameCount, fps);
+}

@@ -51,3 +51,19 @@ pub fn create_spritesheet(
 pub fn encode_png(frame_data: &[u8], width: u32, height: u32) -> Vec<u8> {
     apng::encode_single_frame_png(frame_data, width, height)
 }
+
+#[wasm_bindgen]
+pub fn encode_apng_frames(
+    frames_data: &[u8],
+    width: u32,
+    height: u32,
+    frame_count: u32,
+    fps: u32,
+) -> Vec<u8> {
+    let frame_size = (width * height * 4) as usize;
+    let frames: Vec<&[u8]> = (0..frame_count as usize)
+        .map(|i| &frames_data[i * frame_size..(i + 1) * frame_size])
+        .collect();
+
+    apng::encode_apng(&frames, width, height, fps)
+}
