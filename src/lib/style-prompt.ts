@@ -8,19 +8,24 @@ interface StyleOptions {
 }
 
 const BASE_STYLE = [
-  "3D rendered icon",
-  "isometric view at 38 degree angle",
-  "soft creamy three-point lighting",
-  "matte finish materials with no shiny reflections",
-  "low-poly simplified geometry",
-  "transparent background with alpha channel",
-  "clean minimal aesthetic",
-  "200x200 pixels",
+  "isometric 3D icon",
+  "high-angle 60 degree downward view",
+  "matte clay finish",
+  "soft studio lighting with subtle shadows",
+  "bright neutral colors",
+  "toy-like proportions",
+  "clean minimal design",
+  "smooth bevels",
   "single centered object",
+  "plain white background",
 ].join(", ");
 
-const ANIMATION_VARIATIONS: Record<AnimationType, (index: number, total: number) => string> = {
-  rotate: (i, t) => `same icon, rotated ${Math.round((360 / t) * i)} degrees around vertical axis`,
+const ANIMATION_VARIATIONS: Record<
+  AnimationType,
+  (index: number, total: number) => string
+> = {
+  rotate: (i, t) =>
+    `same icon, rotated ${Math.round((360 / t) * i)} degrees around vertical axis`,
   bounce: (i, t) => {
     const phase = (i / t) * Math.PI * 2;
     const offset = Math.round(Math.sin(phase) * 10);
@@ -38,11 +43,16 @@ const ANIMATION_VARIATIONS: Record<AnimationType, (index: number, total: number)
   },
 };
 
-export function buildStylePrompt(subject: string, options: StyleOptions = {}): string {
+export function buildStylePrompt(
+  subject: string,
+  options: StyleOptions = {}
+): string {
   const parts = [BASE_STYLE, `Subject: ${subject}`];
 
   if (options.accentColor) {
-    parts.push(`accent color ${options.accentColor} used sparingly (max 10% of composition)`);
+    parts.push(
+      `accent color ${options.accentColor} used sparingly (max 10% of composition)`
+    );
   }
 
   if (options.animationType && options.keyframeIndex === undefined) {
@@ -62,4 +72,8 @@ export function buildStylePrompt(subject: string, options: StyleOptions = {}): s
   }
 
   return parts.join(". ") + ".";
+}
+
+export function buildNegativePrompt(): string {
+  return "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects, text, watermark";
 }
