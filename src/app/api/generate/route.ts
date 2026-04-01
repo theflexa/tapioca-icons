@@ -16,7 +16,7 @@ const generateSchema = z.object({
   prompt: z.string().min(1).max(200),
   animationType: z.enum(["bounce", "float", "rotate", "pulse"]).optional(),
   duration: z.union([z.literal(2), z.literal(3)]).optional(),
-  fps: z.union([z.literal(24), z.literal(30), z.literal(60), z.literal(120)]).optional(),
+  fps: z.union([z.literal(60), z.literal(120)]).optional(),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
 });
 
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   const styleParams = {
     animationType,
     duration: body.duration ?? 2,
-    fps: body.fps ?? 24,
+    fps: body.fps ?? 60,
     accentColor: body.accentColor,
   };
 
