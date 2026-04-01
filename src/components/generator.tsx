@@ -13,6 +13,7 @@ const DEFAULT_STYLE: StyleParams = {
   fps: 60,
   accentColor: "#FF6B6B",
   exportResolution: 1024,
+  aiModel: "flux",
 };
 
 type ProgressStage = "generating" | "removing-bg";
@@ -45,6 +46,7 @@ export function Generator() {
           duration: style.duration,
           fps: style.fps,
           accentColor: style.accentColor,
+          aiModel: style.aiModel,
         }),
       });
 

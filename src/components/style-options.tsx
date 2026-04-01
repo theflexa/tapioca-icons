@@ -11,6 +11,7 @@ export interface StyleParams {
   fps: 60 | 120;
   accentColor: string;
   exportResolution: ExportResolution;
+  aiModel: string;
 }
 
 interface StyleOptionsProps {
@@ -37,6 +38,21 @@ export function StyleOptions({ value, onChange, disabled }: StyleOptionsProps) {
 
       {open && (
         <div className="mt-3 grid grid-cols-2 gap-4 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-400">AI Model</span>
+            <select
+              value={value.aiModel}
+              onChange={(e) => update({ aiModel: e.target.value })}
+              disabled={disabled}
+              className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
+            >
+              <option value="flux">FLUX (balanced)</option>
+              <option value="flux-pro">FLUX Pro (quality)</option>
+              <option value="turbo">Turbo (fast)</option>
+              <option value="gptimage">GPT Image</option>
+            </select>
+          </label>
+
           <label className="flex flex-col gap-1">
             <span className="text-xs text-zinc-400">Animation</span>
             <select

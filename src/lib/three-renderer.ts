@@ -51,7 +51,7 @@ export async function renderFrames(
   });
 
   const geometry = new THREE.PlaneGeometry(1.5, 1.5);
-  const material = new THREE.MeshStandardMaterial({
+  const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
     alphaTest: 0.01,

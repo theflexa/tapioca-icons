@@ -1,6 +1,7 @@
 export interface PollinationsOptions {
   negative?: string;
   seed?: number;
+  model?: string;
 }
 
 export async function generateWithPollinations(
@@ -10,7 +11,7 @@ export async function generateWithPollinations(
   const params = new URLSearchParams({
     width: "1024",
     height: "1024",
-    model: "flux",
+    model: options.model || "flux",
     nologo: "true",
   });
 

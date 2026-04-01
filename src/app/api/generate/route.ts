@@ -18,6 +18,7 @@ const generateSchema = z.object({
   duration: z.union([z.literal(2), z.literal(3)]).optional(),
   fps: z.union([z.literal(60), z.literal(120)]).optional(),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+  aiModel: z.string().max(50).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
     const result = await generateImage(styledPrompt, {
       negative: "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects, text, watermark",
       seed: baseSeed,
+      model: body.aiModel,
     });
 
     const keyframes = [result.base64];

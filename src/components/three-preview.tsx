@@ -33,7 +33,7 @@ function IconPlane({ texture, animationType, playing, speed, duration }: IconPla
   return (
     <mesh ref={meshRef}>
       <planeGeometry args={[1.5, 1.5]} />
-      <meshStandardMaterial map={texture} transparent alphaTest={0.01} side={THREE.DoubleSide} />
+      <meshBasicMaterial map={texture} transparent alphaTest={0.01} side={THREE.DoubleSide} />
     </mesh>
   );
 }
