@@ -88,8 +88,16 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    // Generate all keyframes in parallel
-    const results = await Promise.all(prompts.map((p) => generateImage(p)));
+    // Generate all keyframes in parallel with consistent seed
+    const baseSeed = Math.floor(Math.random() * 1000000);
+    const results = await Promise.all(
+      prompts.map((p, i) =>
+        generateImage(p, {
+          negative: "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects",
+          seed: baseSeed + i,
+        })
+      )
+    );
     const keyframes = results.map((r) => r.base64);
     const provider = results[0].provider;
 

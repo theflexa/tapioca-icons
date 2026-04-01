@@ -1,12 +1,15 @@
 import { generateWithOpenRouter } from "./openrouter";
-import { generateWithPollinations } from "./pollinations";
+import { generateWithPollinations, PollinationsOptions } from "./pollinations";
 
 export type GenerateResult = {
   base64: string;
   provider: "openrouter" | "pollinations";
 };
 
-export async function generateImage(prompt: string): Promise<GenerateResult> {
+export async function generateImage(
+  prompt: string,
+  pollinationsOptions?: PollinationsOptions
+): Promise<GenerateResult> {
   if (process.env.OPENROUTER_API_KEY) {
     try {
       const base64 = await generateWithOpenRouter(prompt);
@@ -16,6 +19,6 @@ export async function generateImage(prompt: string): Promise<GenerateResult> {
     }
   }
 
-  const base64 = await generateWithPollinations(prompt);
+  const base64 = await generateWithPollinations(prompt, pollinationsOptions);
   return { base64, provider: "pollinations" };
 }

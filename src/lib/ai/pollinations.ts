@@ -1,8 +1,30 @@
-export async function generateWithPollinations(prompt: string): Promise<string> {
-  const encoded = encodeURIComponent(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?width=200&height=200&nologo=true`;
+export interface PollinationsOptions {
+  negative?: string;
+  seed?: number;
+}
 
-  const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+export async function generateWithPollinations(
+  prompt: string,
+  options: PollinationsOptions = {}
+): Promise<string> {
+  const params = new URLSearchParams({
+    width: "1024",
+    height: "1024",
+    model: "flux",
+    nologo: "true",
+  });
+
+  if (options.negative) {
+    params.set("negative", options.negative);
+  }
+  if (options.seed !== undefined) {
+    params.set("seed", String(options.seed));
+  }
+
+  const encoded = encodeURIComponent(prompt);
+  const url = `https://image.pollinations.ai/prompt/${encoded}?${params.toString()}`;
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
 
   if (!res.ok) {
     throw new Error(`Pollinations error: ${res.status} ${res.statusText}`);
