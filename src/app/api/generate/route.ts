@@ -58,7 +58,6 @@ export async function POST(request: NextRequest) {
   }
 
   const animationType = body.animationType ?? "float";
-  const totalKeyframes = 4;
   const styleParams = {
     animationType,
     duration: body.duration ?? 2,
@@ -78,35 +77,27 @@ export async function POST(request: NextRequest) {
     .returning();
 
   try {
-    // Build all prompts
-    const prompts = Array.from({ length: totalKeyframes }, (_, i) =>
-      buildStylePrompt(filtered.sanitized, {
-        accentColor: body.accentColor,
-        animationType,
-        keyframeIndex: i,
-        totalKeyframes,
-      })
-    );
+    // Generate a single base frame (avoids Pollinations rate limiting)
+    const styledPrompt = buildStylePrompt(filtered.sanitized, {
+      accentColor: body.accentColor,
+      animationType,
+    });
 
-    // Generate all keyframes in parallel with consistent seed
     const baseSeed = Math.floor(Math.random() * 1000000);
-    const results = await Promise.all(
-      prompts.map((p, i) =>
-        generateImage(p, {
-          negative: "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects",
-          seed: baseSeed + i,
-        })
-      )
-    );
-    const keyframes = results.map((r) => r.base64);
-    const provider = results[0].provider;
+    const result = await generateImage(styledPrompt, {
+      negative: "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects, text, watermark",
+      seed: baseSeed,
+    });
+
+    const keyframes = [result.base64];
+    const provider = result.provider;
 
     // Update generation status
     await db
       .update(generations)
       .set({
         status: "completed",
-        framesCount: totalKeyframes,
+        framesCount: 1,
         provider,
       })
       .where(eq(generations.id, generation.id));

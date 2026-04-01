@@ -60,50 +60,78 @@ export function Generator() {
       }
 
       const data = await res.json();
-      const keyframes: string[] = data.keyframes;
-      setProgress(33);
+      const baseFrameB64: string = data.keyframes[0];
+      setProgress(20);
 
-      // Step 2: Remove background from each keyframe
+      // Step 2: Remove background from base frame
       setStage("removing-bg");
-      const processedPixels: Uint8Array[] = [];
+      const binary = atob(baseFrameB64);
+      const bytes = new Uint8Array(binary.length);
+      for (let j = 0; j < binary.length; j++) {
+        bytes[j] = binary.charCodeAt(j);
+      }
+      const blob = new Blob([bytes], { type: "image/png" });
+      const cleanBlob = await removeImageBackground(blob);
 
-      for (let i = 0; i < keyframes.length; i++) {
-        // Convert base64 to blob
-        const binary = atob(keyframes[i]);
-        const bytes = new Uint8Array(binary.length);
-        for (let j = 0; j < binary.length; j++) {
-          bytes[j] = binary.charCodeAt(j);
-        }
-        const blob = new Blob([bytes], { type: "image/png" });
+      // Decode to ImageBitmap for reuse
+      const cleanImg = await createImageBitmap(cleanBlob);
+      setProgress(50);
 
-        // Remove background
-        const cleanBlob = await removeImageBackground(blob);
+      // Step 3: Generate animation keyframes via canvas transforms
+      setStage("processing");
+      const NUM_KEYFRAMES = 8;
+      const animationKeyframes: Uint8Array[] = [];
 
-        // Decode to canvas, resize to ICON_SIZE
-        const img = new Image();
-        const url = URL.createObjectURL(cleanBlob);
-        img.src = url;
-        await new Promise((resolve) => (img.onload = resolve));
-        URL.revokeObjectURL(url);
-
+      for (let i = 0; i < NUM_KEYFRAMES; i++) {
+        const phase = (i / NUM_KEYFRAMES) * Math.PI * 2;
         const canvas = document.createElement("canvas");
         canvas.width = ICON_SIZE;
         canvas.height = ICON_SIZE;
         const ctx = canvas.getContext("2d")!;
-        ctx.drawImage(img, 0, 0, ICON_SIZE, ICON_SIZE);
-        processedPixels.push(
+
+        ctx.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
+        ctx.save();
+        ctx.translate(ICON_SIZE / 2, ICON_SIZE / 2);
+
+        // Apply animation transform based on type
+        switch (style.animationType) {
+          case "rotate":
+            ctx.rotate((Math.PI * 2 * i) / NUM_KEYFRAMES);
+            break;
+          case "bounce": {
+            const offsetY = Math.sin(phase) * 12;
+            ctx.translate(0, -offsetY);
+            break;
+          }
+          case "float": {
+            const offsetY = Math.sin(phase) * 8;
+            const tilt = Math.sin(phase) * 0.05;
+            ctx.translate(0, -offsetY);
+            ctx.rotate(tilt);
+            break;
+          }
+          case "pulse": {
+            const scale = 1 + Math.sin(phase) * 0.08;
+            ctx.scale(scale, scale);
+            break;
+          }
+        }
+
+        ctx.drawImage(cleanImg, -ICON_SIZE / 2, -ICON_SIZE / 2, ICON_SIZE, ICON_SIZE);
+        ctx.restore();
+
+        animationKeyframes.push(
           new Uint8Array(ctx.getImageData(0, 0, ICON_SIZE, ICON_SIZE).data)
         );
-
-        setProgress(33 + Math.round(((i + 1) / keyframes.length) * 34));
       }
 
-      // Step 3: Interpolate keyframes via WASM
-      setStage("processing");
+      setProgress(70);
+
+      // Step 4: Interpolate keyframes via WASM for smooth animation
       const keyframesBuffer = new Uint8Array(
-        processedPixels.length * ICON_SIZE * ICON_SIZE * 4
+        animationKeyframes.length * ICON_SIZE * ICON_SIZE * 4
       );
-      processedPixels.forEach((kf, i) => {
+      animationKeyframes.forEach((kf, i) => {
         keyframesBuffer.set(kf, i * ICON_SIZE * ICON_SIZE * 4);
       });
 
@@ -111,7 +139,7 @@ export function Generator() {
         keyframesBuffer,
         ICON_SIZE,
         ICON_SIZE,
-        processedPixels.length,
+        animationKeyframes.length,
         totalFrames
       );
 
