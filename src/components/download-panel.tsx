@@ -35,9 +35,8 @@ export function DownloadPanel({ frames, width, height, frameCount }: DownloadPan
     downloadBlob(sheet, "tapioca-icon-spritesheet.png", "image/png");
   };
 
-  const handleDownloadApng = async () => {
-    const sheet = await createSpritesheet(frames, width, height, frameCount);
-    downloadBlob(sheet, "tapioca-icon-animated.png", "image/png");
+  const handleDownloadApng = () => {
+    alert("APNG export coming soon!");
   };
 
   const handleDownloadWebm = () => {
@@ -60,9 +59,9 @@ export function DownloadPanel({ frames, width, height, frameCount }: DownloadPan
         </button>
         <button
           onClick={handleDownloadApng}
-          className="px-4 py-2 bg-zinc-800 rounded-lg text-sm hover:bg-zinc-700 transition-colors"
+          className="px-4 py-2 bg-zinc-800 rounded-lg text-sm hover:bg-zinc-700 transition-colors opacity-50"
         >
-          APNG (animated)
+          APNG (coming soon)
         </button>
         <button
           onClick={handleDownloadWebm}

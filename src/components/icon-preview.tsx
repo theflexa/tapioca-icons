@@ -36,7 +36,13 @@ export function IconPreview({ frames, width, height, frameCount, fps }: IconPrev
     const offset = index * frameSize;
     const frameData = frames.slice(offset, offset + frameSize);
     const imageData = new ImageData(new Uint8ClampedArray(frameData), width, height);
-    ctx.putImageData(imageData, 0, 0);
+    // Use an offscreen canvas so drawImage composites with alpha over the checkerboard
+    const offscreen = document.createElement("canvas");
+    offscreen.width = width;
+    offscreen.height = height;
+    const offCtx = offscreen.getContext("2d")!;
+    offCtx.putImageData(imageData, 0, 0);
+    ctx.drawImage(offscreen, 0, 0);
   }, [frames, frameSize, width, height, drawCheckerboard]);
 
   useEffect(() => {

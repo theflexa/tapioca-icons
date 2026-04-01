@@ -1,20 +1,21 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { filterPrompt } from "@/lib/content-filter";
-import { checkRateLimit, incrementRateLimit } from "@/lib/rate-limit";
+import { checkAndIncrementRateLimit } from "@/lib/rate-limit";
 import { buildStylePrompt, AnimationType } from "@/lib/style-prompt";
 import { generateImage } from "@/lib/ai/generate";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 
-interface GenerateRequest {
-  prompt: string;
-  animationType?: AnimationType;
-  duration?: 2 | 3;
-  fps?: 24 | 30;
-  accentColor?: string;
-}
+const generateSchema = z.object({
+  prompt: z.string().min(1).max(200),
+  animationType: z.enum(["bounce", "float", "rotate", "pulse"]).optional(),
+  duration: z.union([z.literal(2), z.literal(3)]).optional(),
+  fps: z.union([z.literal(24), z.literal(30)]).optional(),
+  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+});
 
 export async function POST(request: NextRequest) {
   // Auth check
@@ -24,7 +25,22 @@ export async function POST(request: NextRequest) {
   }
 
   // Parse body
-  const body: GenerateRequest = await request.json();
+  let rawBody: unknown;
+  try {
+    rawBody = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // Validate body
+  const parsed = generateSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid request", details: parsed.error.flatten().fieldErrors },
+      { status: 400 }
+    );
+  }
+  const body = parsed.data;
 
   // Content filter
   const filtered = filterPrompt(body.prompt);
@@ -32,8 +48,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: filtered.reason }, { status: 400 });
   }
 
-  // Rate limit
-  const rateCheck = await checkRateLimit(userId);
+  // Rate limit (atomic check + increment)
+  const rateCheck = await checkAndIncrementRateLimit(userId);
   if (!rateCheck.allowed) {
     return NextResponse.json({ error: rateCheck.reason }, { status: 429 });
   }
@@ -88,9 +104,6 @@ export async function POST(request: NextRequest) {
         provider: provider,
       })
       .where(eq(generations.id, generation.id));
-
-    // Increment rate limit
-    await incrementRateLimit(userId);
 
     return NextResponse.json({
       id: generation.id,

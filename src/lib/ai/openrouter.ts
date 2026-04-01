@@ -8,9 +8,10 @@ export async function generateWithOpenRouter(prompt: string): Promise<string> {
     body: JSON.stringify({
       prompt,
       n: 1,
-      size: "256x256",
+      size: "200x200",
       response_format: "b64_json",
     }),
+    signal: AbortSignal.timeout(30000),
   });
 
   if (!res.ok) {

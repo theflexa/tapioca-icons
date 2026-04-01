@@ -31,7 +31,7 @@ export function filterPrompt(raw: string): FilterResult {
   const lower = trimmed.toLowerCase();
 
   for (const term of BLOCKED_TERMS) {
-    if (lower.includes(term)) {
+    if (new RegExp("\\b" + term + "\\b", "i").test(lower)) {
       return { ok: false, reason: "Prompt contains prohibited content" };
     }
   }
