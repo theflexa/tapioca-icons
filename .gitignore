@@ -47,3 +47,5 @@ encoder/pkg/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.vercel
