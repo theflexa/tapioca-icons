@@ -12,6 +12,7 @@
   "dependencies": {
     "@clerk/nextjs": "^7.0.8",
     "@clerk/themes": "^2.4.57",
+    "@imgly/background-removal": "^1.7.0",
     "@neondatabase/serverless": "^1.0.2",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.2",

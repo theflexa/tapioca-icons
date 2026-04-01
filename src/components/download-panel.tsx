@@ -7,6 +7,7 @@ interface DownloadPanelProps {
   width: number;
   height: number;
   frameCount: number;
+  fps?: number;
 }
 
 function downloadBlob(data: Uint8Array, filename: string, mime: string) {
