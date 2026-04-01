@@ -3,27 +3,19 @@
 import { useState } from "react";
 import { PromptInput } from "./prompt-input";
 import { StyleOptions, StyleParams } from "./style-options";
-import { IconPreview } from "./icon-preview";
+import { ThreePreview } from "./three-preview";
 import { DownloadPanel } from "./download-panel";
 import { removeImageBackground } from "@/lib/background-removal";
-
-const ICON_SIZE = 200;
 
 const DEFAULT_STYLE: StyleParams = {
   animationType: "float",
   duration: 2,
   fps: 60,
   accentColor: "#FF6B6B",
+  exportResolution: 1024,
 };
 
-type ProgressStage = "generating" | "removing-bg" | "animating";
-
-// Ease-in-out cubic bezier approximation
-function easeInOut(t: number): number {
-  return t < 0.5
-    ? 4 * t * t * t
-    : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
+type ProgressStage = "generating" | "removing-bg";
 
 export function Generator() {
   const [prompt, setPrompt] = useState("");
@@ -32,22 +24,18 @@ export function Generator() {
   const [stage, setStage] = useState<ProgressStage | null>(null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [frames, setFrames] = useState<Uint8Array | null>(null);
-  const [frameCount, setFrameCount] = useState(0);
-
-  const totalFrames = style.duration * style.fps;
+  const [textureUrl, setTextureUrl] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
     setLoading(true);
     setError(null);
-    setFrames(null);
+    setTextureUrl(null);
     setStage("generating");
     setProgress(0);
 
     try {
-      // Step 1: Generate base frame via API
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,9 +55,8 @@ export function Generator() {
 
       const data = await res.json();
       const baseFrameB64: string = data.keyframes[0];
-      setProgress(20);
+      setProgress(40);
 
-      // Step 2: Remove background
       setStage("removing-bg");
       const binary = atob(baseFrameB64);
       const bytes = new Uint8Array(binary.length);
@@ -78,69 +65,11 @@ export function Generator() {
       }
       const blob = new Blob([bytes], { type: "image/png" });
       const cleanBlob = await removeImageBackground(blob);
-      const cleanImg = await createImageBitmap(cleanBlob);
-      setProgress(50);
+      setProgress(90);
 
-      // Step 3: Generate ALL animation frames directly via canvas transforms
-      setStage("animating");
-      const allPixels = new Uint8Array(totalFrames * ICON_SIZE * ICON_SIZE * 4);
-      const canvas = document.createElement("canvas");
-      canvas.width = ICON_SIZE;
-      canvas.height = ICON_SIZE;
-      const ctx = canvas.getContext("2d")!;
-
-      for (let i = 0; i < totalFrames; i++) {
-        const t = i / totalFrames; // 0 to 1 (normalized time in loop)
-        const phase = t * Math.PI * 2; // full cycle
-
-        ctx.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
-        ctx.save();
-        ctx.translate(ICON_SIZE / 2, ICON_SIZE / 2);
-
-        switch (style.animationType) {
-          case "rotate": {
-            const angle = t * Math.PI * 2;
-            ctx.rotate(angle);
-            break;
-          }
-          case "bounce": {
-            // Smooth bounce using eased sine
-            const raw = Math.sin(phase);
-            const eased = raw >= 0 ? easeInOut(raw) : -easeInOut(-raw);
-            ctx.translate(0, -eased * 15);
-            break;
-          }
-          case "float": {
-            const tilt = Math.sin(phase) * 0.04;
-            const easeT = easeInOut((Math.sin(phase) + 1) / 2);
-            ctx.translate(0, -(easeT * 2 - 1) * 10);
-            ctx.rotate(tilt);
-            break;
-          }
-          case "pulse": {
-            const scaleAmount = 1 + Math.sin(phase) * 0.1;
-            ctx.scale(scaleAmount, scaleAmount);
-            break;
-          }
-        }
-
-        ctx.drawImage(cleanImg, -ICON_SIZE / 2, -ICON_SIZE / 2, ICON_SIZE, ICON_SIZE);
-        ctx.restore();
-
-        const imageData = ctx.getImageData(0, 0, ICON_SIZE, ICON_SIZE);
-        allPixels.set(new Uint8Array(imageData.data.buffer), i * ICON_SIZE * ICON_SIZE * 4);
-
-        // Update progress every 10%
-        if (i % Math.ceil(totalFrames / 10) === 0) {
-          setProgress(50 + Math.round((i / totalFrames) * 50));
-          // Yield to UI thread
-          await new Promise((r) => setTimeout(r, 0));
-        }
-      }
-
+      const url = URL.createObjectURL(cleanBlob);
+      setTextureUrl(url);
       setProgress(100);
-      setFrames(allPixels);
-      setFrameCount(totalFrames);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -153,13 +82,11 @@ export function Generator() {
   const stageLabels: Record<ProgressStage, string> = {
     generating: "AI is generating the icon...",
     "removing-bg": "Removing background with AI...",
-    animating: `Rendering ${totalFrames} animation frames...`,
   };
 
   const buttonLabels: Record<ProgressStage, string> = {
     generating: "Generating...",
     "removing-bg": "Removing background...",
-    animating: "Rendering frames...",
   };
 
   return (
@@ -195,20 +122,19 @@ export function Generator() {
         </div>
       )}
 
-      <IconPreview
-        frames={frames ?? new Uint8Array(0)}
-        width={ICON_SIZE}
-        height={ICON_SIZE}
-        frameCount={frameCount}
+      <ThreePreview
+        textureUrl={textureUrl}
+        animationType={style.animationType}
+        duration={style.duration}
         fps={style.fps}
       />
 
       <DownloadPanel
-        frames={frames}
-        width={ICON_SIZE}
-        height={ICON_SIZE}
-        frameCount={frameCount}
+        textureUrl={textureUrl}
+        animationType={style.animationType}
+        duration={style.duration}
         fps={style.fps}
+        exportResolution={style.exportResolution}
       />
     </div>
   );
