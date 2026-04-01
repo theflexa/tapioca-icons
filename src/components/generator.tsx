@@ -5,7 +5,6 @@ import { PromptInput } from "./prompt-input";
 import { StyleOptions, StyleParams } from "./style-options";
 import { IconPreview } from "./icon-preview";
 import { DownloadPanel } from "./download-panel";
-import { interpolateFrames } from "@/encoder/wasm";
 import { removeImageBackground } from "@/lib/background-removal";
 
 const ICON_SIZE = 200;
@@ -13,11 +12,18 @@ const ICON_SIZE = 200;
 const DEFAULT_STYLE: StyleParams = {
   animationType: "float",
   duration: 2,
-  fps: 24,
+  fps: 60,
   accentColor: "#FF6B6B",
 };
 
-type ProgressStage = "generating" | "removing-bg" | "processing";
+type ProgressStage = "generating" | "removing-bg" | "animating";
+
+// Ease-in-out cubic bezier approximation
+function easeInOut(t: number): number {
+  return t < 0.5
+    ? 4 * t * t * t
+    : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
 
 export function Generator() {
   const [prompt, setPrompt] = useState("");
@@ -41,7 +47,7 @@ export function Generator() {
     setProgress(0);
 
     try {
-      // Step 1: Generate keyframes via API
+      // Step 1: Generate base frame via API
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,7 +69,7 @@ export function Generator() {
       const baseFrameB64: string = data.keyframes[0];
       setProgress(20);
 
-      // Step 2: Remove background from base frame
+      // Step 2: Remove background
       setStage("removing-bg");
       const binary = atob(baseFrameB64);
       const bytes = new Uint8Array(binary.length);
@@ -72,47 +78,48 @@ export function Generator() {
       }
       const blob = new Blob([bytes], { type: "image/png" });
       const cleanBlob = await removeImageBackground(blob);
-
-      // Decode to ImageBitmap for reuse
       const cleanImg = await createImageBitmap(cleanBlob);
       setProgress(50);
 
-      // Step 3: Generate animation keyframes via canvas transforms
-      setStage("processing");
-      const NUM_KEYFRAMES = 8;
-      const animationKeyframes: Uint8Array[] = [];
+      // Step 3: Generate ALL animation frames directly via canvas transforms
+      setStage("animating");
+      const allPixels = new Uint8Array(totalFrames * ICON_SIZE * ICON_SIZE * 4);
+      const canvas = document.createElement("canvas");
+      canvas.width = ICON_SIZE;
+      canvas.height = ICON_SIZE;
+      const ctx = canvas.getContext("2d")!;
 
-      for (let i = 0; i < NUM_KEYFRAMES; i++) {
-        const phase = (i / NUM_KEYFRAMES) * Math.PI * 2;
-        const canvas = document.createElement("canvas");
-        canvas.width = ICON_SIZE;
-        canvas.height = ICON_SIZE;
-        const ctx = canvas.getContext("2d")!;
+      for (let i = 0; i < totalFrames; i++) {
+        const t = i / totalFrames; // 0 to 1 (normalized time in loop)
+        const phase = t * Math.PI * 2; // full cycle
 
         ctx.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
         ctx.save();
         ctx.translate(ICON_SIZE / 2, ICON_SIZE / 2);
 
-        // Apply animation transform based on type
         switch (style.animationType) {
-          case "rotate":
-            ctx.rotate((Math.PI * 2 * i) / NUM_KEYFRAMES);
+          case "rotate": {
+            const angle = t * Math.PI * 2;
+            ctx.rotate(angle);
             break;
+          }
           case "bounce": {
-            const offsetY = Math.sin(phase) * 12;
-            ctx.translate(0, -offsetY);
+            // Smooth bounce using eased sine
+            const raw = Math.sin(phase);
+            const eased = raw >= 0 ? easeInOut(raw) : -easeInOut(-raw);
+            ctx.translate(0, -eased * 15);
             break;
           }
           case "float": {
-            const offsetY = Math.sin(phase) * 8;
-            const tilt = Math.sin(phase) * 0.05;
-            ctx.translate(0, -offsetY);
+            const tilt = Math.sin(phase) * 0.04;
+            const easeT = easeInOut((Math.sin(phase) + 1) / 2);
+            ctx.translate(0, -(easeT * 2 - 1) * 10);
             ctx.rotate(tilt);
             break;
           }
           case "pulse": {
-            const scale = 1 + Math.sin(phase) * 0.08;
-            ctx.scale(scale, scale);
+            const scaleAmount = 1 + Math.sin(phase) * 0.1;
+            ctx.scale(scaleAmount, scaleAmount);
             break;
           }
         }
@@ -120,31 +127,19 @@ export function Generator() {
         ctx.drawImage(cleanImg, -ICON_SIZE / 2, -ICON_SIZE / 2, ICON_SIZE, ICON_SIZE);
         ctx.restore();
 
-        animationKeyframes.push(
-          new Uint8Array(ctx.getImageData(0, 0, ICON_SIZE, ICON_SIZE).data)
-        );
+        const imageData = ctx.getImageData(0, 0, ICON_SIZE, ICON_SIZE);
+        allPixels.set(new Uint8Array(imageData.data.buffer), i * ICON_SIZE * ICON_SIZE * 4);
+
+        // Update progress every 10%
+        if (i % Math.ceil(totalFrames / 10) === 0) {
+          setProgress(50 + Math.round((i / totalFrames) * 50));
+          // Yield to UI thread
+          await new Promise((r) => setTimeout(r, 0));
+        }
       }
 
-      setProgress(70);
-
-      // Step 4: Interpolate keyframes via WASM for smooth animation
-      const keyframesBuffer = new Uint8Array(
-        animationKeyframes.length * ICON_SIZE * ICON_SIZE * 4
-      );
-      animationKeyframes.forEach((kf, i) => {
-        keyframesBuffer.set(kf, i * ICON_SIZE * ICON_SIZE * 4);
-      });
-
-      const allFrames = await interpolateFrames(
-        keyframesBuffer,
-        ICON_SIZE,
-        ICON_SIZE,
-        animationKeyframes.length,
-        totalFrames
-      );
-
       setProgress(100);
-      setFrames(allFrames);
+      setFrames(allPixels);
       setFrameCount(totalFrames);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -156,20 +151,19 @@ export function Generator() {
   };
 
   const stageLabels: Record<ProgressStage, string> = {
-    generating: "AI is generating keyframes...",
+    generating: "AI is generating the icon...",
     "removing-bg": "Removing background with AI...",
-    processing: "Building animation frames...",
+    animating: `Rendering ${totalFrames} animation frames...`,
   };
 
   const buttonLabels: Record<ProgressStage, string> = {
-    generating: "Generating frames...",
-    "removing-bg": "Removing backgrounds...",
-    processing: "Processing...",
+    generating: "Generating...",
+    "removing-bg": "Removing background...",
+    animating: "Rendering frames...",
   };
 
   return (
     <div className="flex flex-col items-center gap-6 w-full max-w-2xl">
-      {/* Input Area */}
       <div className="w-full space-y-3">
         <PromptInput value={prompt} onChange={setPrompt} disabled={loading} />
         <StyleOptions value={style} onChange={setStyle} disabled={loading} />
@@ -195,14 +189,12 @@ export function Generator() {
         )}
       </div>
 
-      {/* Error */}
       {error && (
         <div className="w-full p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-300 text-sm">
           {error}
         </div>
       )}
 
-      {/* Preview */}
       <IconPreview
         frames={frames ?? new Uint8Array(0)}
         width={ICON_SIZE}
@@ -211,7 +203,6 @@ export function Generator() {
         fps={style.fps}
       />
 
-      {/* Download */}
       <DownloadPanel
         frames={frames}
         width={ICON_SIZE}

@@ -6,7 +6,7 @@ import type { AnimationType } from "@/lib/style-prompt";
 export interface StyleParams {
   animationType: AnimationType;
   duration: 2 | 3;
-  fps: 24 | 30;
+  fps: 24 | 30 | 60 | 120;
   accentColor: string;
 }
 
@@ -66,12 +66,14 @@ export function StyleOptions({ value, onChange, disabled }: StyleOptionsProps) {
             <span className="text-xs text-zinc-400">FPS</span>
             <select
               value={value.fps}
-              onChange={(e) => update({ fps: Number(e.target.value) as 24 | 30 })}
+              onChange={(e) => update({ fps: Number(e.target.value) as 24 | 30 | 60 | 120 })}
               disabled={disabled}
               className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
             >
               <option value={24}>24 fps</option>
               <option value={30}>30 fps</option>
+              <option value={60}>60 fps</option>
+              <option value={120}>120 fps</option>
             </select>
           </label>
 

@@ -1,6 +1,7 @@
+import { Muxer, ArrayBufferTarget } from "webm-muxer";
+
 export function isWebMSupported(): boolean {
-  if (typeof MediaRecorder === "undefined") return false;
-  return MediaRecorder.isTypeSupported("video/webm;codecs=vp9");
+  return typeof VideoEncoder !== "undefined";
 }
 
 export async function encodeWebM(
@@ -11,48 +12,56 @@ export async function encodeWebM(
   fps: number
 ): Promise<Blob> {
   const frameSize = width * height * 4;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
+  const frameDuration = 1_000_000 / fps; // microseconds per frame
 
-  const stream = canvas.captureStream(0);
-  const recorder = new MediaRecorder(stream, {
-    mimeType: "video/webm;codecs=vp9",
-    videoBitsPerSecond: 2_000_000,
+  const target = new ArrayBufferTarget();
+  const muxer = new Muxer({
+    target,
+    video: {
+      codec: "V_VP9",
+      width,
+      height,
+      alpha: true,
+      frameRate: fps,
+    },
   });
 
-  const chunks: Blob[] = [];
-  recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data);
-  };
-
-  const done = new Promise<Blob>((resolve) => {
-    recorder.onstop = () => {
-      resolve(new Blob(chunks, { type: "video/webm" }));
-    };
+  const encoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+    error: (e) => { throw e; },
   });
 
-  recorder.start();
-
-  const interval = 1000 / fps;
+  encoder.configure({
+    codec: "vp09.00.10.08.01",
+    width,
+    height,
+    bitrate: 4_000_000,
+    framerate: fps,
+    alpha: "keep",
+  });
 
   for (let i = 0; i < frameCount; i++) {
     const offset = i * frameSize;
     const frameData = frames.slice(offset, offset + frameSize);
-    const imageData = new ImageData(new Uint8ClampedArray(frameData), width, height);
-    ctx.putImageData(imageData, 0, 0);
 
-    const track = stream.getVideoTracks()[0] as MediaStreamTrack & {
-      requestFrame?: () => void;
-    };
-    if (track.requestFrame) {
-      track.requestFrame();
-    }
+    const videoFrame = new VideoFrame(
+      new Uint8ClampedArray(frameData.buffer, frameData.byteOffset, frameData.length),
+      {
+        format: "RGBA",
+        codedWidth: width,
+        codedHeight: height,
+        timestamp: i * frameDuration,
+        duration: frameDuration,
+      }
+    );
 
-    await new Promise((resolve) => setTimeout(resolve, interval));
+    encoder.encode(videoFrame, { keyFrame: i % (fps * 2) === 0 });
+    videoFrame.close();
   }
 
-  recorder.stop();
-  return done;
+  await encoder.flush();
+  encoder.close();
+  muxer.finalize();
+
+  return new Blob([target.buffer], { type: "video/webm" });
 }

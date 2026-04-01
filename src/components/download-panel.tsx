@@ -50,7 +50,22 @@ export function DownloadPanel({
   const handleDownloadApng = async () => {
     setExporting("apng");
     try {
-      const apng = await encodeApng(frames, width, height, frameCount, fps);
+      // APNG capped at 60fps (browser rendering limitation)
+      const apngFps = Math.min(fps, 60);
+      const step = Math.round(fps / apngFps);
+      const apngFrameCount = Math.ceil(frameCount / step);
+
+      // Sample frames at the target fps
+      const sampledFrames = new Uint8Array(apngFrameCount * frameSize);
+      for (let i = 0; i < apngFrameCount; i++) {
+        const srcOffset = (i * step) * frameSize;
+        sampledFrames.set(
+          frames.slice(srcOffset, srcOffset + frameSize),
+          i * frameSize
+        );
+      }
+
+      const apng = await encodeApng(sampledFrames, width, height, apngFrameCount, apngFps);
       downloadBlob(apng, "tapioca-icon.apng", "image/apng");
     } finally {
       setExporting(null);
