@@ -1,4 +1,4 @@
-export type AnimationType = "bounce" | "float" | "rotate" | "pulse";
+export type AnimationType = "bounce" | "float" | "rotate" | "pulse" | "flip" | "page-turn" | "orbit" | "tilt";
 
 interface StyleOptions {
   accentColor?: string;
@@ -41,6 +41,10 @@ const ANIMATION_VARIATIONS: Record<
     const scale = 100 + Math.round(Math.sin(phase) * 8);
     return `same icon, scaled to ${scale}% of original size`;
   },
+  flip: () => "same icon",
+  "page-turn": () => "same icon",
+  orbit: () => "same icon",
+  tilt: () => "same icon",
 };
 
 export function buildStylePrompt(

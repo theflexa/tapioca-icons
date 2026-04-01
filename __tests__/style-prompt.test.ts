@@ -30,6 +30,11 @@ describe("style prompt builder", () => {
     expect(result).toContain("same icon");
   });
 
+  it("accepts new 3D animation types", () => {
+    const result = buildStylePrompt("a box", { animationType: "flip" });
+    expect(result).toContain("flip");
+  });
+
   it("returns a negative prompt", () => {
     const result = buildNegativePrompt();
     expect(result).toContain("realistic");
