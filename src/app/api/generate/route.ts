@@ -9,6 +9,9 @@ import { generateImage } from "@/lib/ai/generate";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 
+// Vercel serverless function timeout (free tier max: 60s)
+export const maxDuration = 60;
+
 const generateSchema = z.object({
   prompt: z.string().min(1).max(200),
   animationType: z.enum(["bounce", "float", "rotate", "pulse"]).optional(),
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
   }
 
   const animationType = body.animationType ?? "float";
-  const totalKeyframes = 6;
+  const totalKeyframes = 4;
   const styleParams = {
     animationType,
     duration: body.duration ?? 2,
@@ -74,79 +77,46 @@ export async function POST(request: NextRequest) {
     })
     .returning();
 
-  // Stream keyframes one by one using NDJSON
-  const encoder = new TextEncoder();
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const keyframes: string[] = [];
-        let provider: string | undefined;
+  try {
+    // Build all prompts
+    const prompts = Array.from({ length: totalKeyframes }, (_, i) =>
+      buildStylePrompt(filtered.sanitized, {
+        accentColor: body.accentColor,
+        animationType,
+        keyframeIndex: i,
+        totalKeyframes,
+      })
+    );
 
-        for (let i = 0; i < totalKeyframes; i++) {
-          const styledPrompt = buildStylePrompt(filtered.sanitized, {
-            accentColor: body.accentColor,
-            animationType,
-            keyframeIndex: i,
-            totalKeyframes,
-          });
+    // Generate all keyframes in parallel
+    const results = await Promise.all(prompts.map((p) => generateImage(p)));
+    const keyframes = results.map((r) => r.base64);
+    const provider = results[0].provider;
 
-          // Send progress event
-          controller.enqueue(
-            encoder.encode(
-              JSON.stringify({ type: "progress", current: i + 1, total: totalKeyframes }) + "\n"
-            )
-          );
+    // Update generation status
+    await db
+      .update(generations)
+      .set({
+        status: "completed",
+        framesCount: totalKeyframes,
+        provider,
+      })
+      .where(eq(generations.id, generation.id));
 
-          const result = await generateImage(styledPrompt);
-          keyframes.push(result.base64);
+    return NextResponse.json({
+      id: generation.id,
+      keyframes,
+      params: styleParams,
+    });
+  } catch {
+    await db
+      .update(generations)
+      .set({ status: "failed" })
+      .where(eq(generations.id, generation.id));
 
-          if (i === 0) {
-            provider = result.provider;
-          }
-        }
-
-        // Update generation status
-        await db
-          .update(generations)
-          .set({
-            status: "completed",
-            framesCount: totalKeyframes,
-            provider: provider,
-          })
-          .where(eq(generations.id, generation.id));
-
-        // Send final result
-        controller.enqueue(
-          encoder.encode(
-            JSON.stringify({
-              type: "result",
-              id: generation.id,
-              keyframes,
-              params: styleParams,
-            }) + "\n"
-          )
-        );
-        controller.close();
-      } catch {
-        await db
-          .update(generations)
-          .set({ status: "failed" })
-          .where(eq(generations.id, generation.id));
-
-        controller.enqueue(
-          encoder.encode(
-            JSON.stringify({ type: "error", error: "Failed to generate icon" }) + "\n"
-          )
-        );
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "application/x-ndjson",
-      "Transfer-Encoding": "chunked",
-    },
-  });
+    return NextResponse.json(
+      { error: "Failed to generate icon" },
+      { status: 500 }
+    );
+  }
 }

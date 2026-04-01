@@ -49,42 +49,16 @@ export function Generator() {
       });
 
       if (!res.ok) {
-        const text = await res.text();
-        try {
-          const data = JSON.parse(text);
-          throw new Error(data.error || "Generation failed");
-        } catch {
-          throw new Error("Generation failed");
-        }
+        const data = await res.json();
+        throw new Error(data.error || "Generation failed");
       }
 
-      // Read NDJSON stream
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let keyframes: string[] = [];
+      setProgress({ current: 1, total: 2 });
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      const data = await res.json();
+      const keyframes: string[] = data.keyframes;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop()!;
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          const msg = JSON.parse(line);
-
-          if (msg.type === "progress") {
-            setProgress({ current: msg.current, total: msg.total });
-          } else if (msg.type === "result") {
-            keyframes = msg.keyframes;
-          } else if (msg.type === "error") {
-            throw new Error(msg.error);
-          }
-        }
-      }
+      setProgress({ current: 2, total: 2 });
 
       // Decode base64 keyframes to raw RGBA pixel data
       const keyframePixels: Uint8Array[] = await Promise.all(
@@ -140,20 +114,26 @@ export function Generator() {
         >
           {loading
             ? progress
-              ? `Generating keyframe ${progress.current}/${progress.total}...`
+              ? progress.current === 1
+                ? "Generating frames..."
+                : "Processing..."
               : "Starting..."
             : "Generate Icon"}
         </button>
-        {loading && progress && (
+        {loading && (
           <div className="w-full">
             <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
               <div
-                className="bg-orange-500 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                className="bg-orange-500 h-2 rounded-full transition-all duration-500"
+                style={{ width: progress ? `${(progress.current / progress.total) * 100}%` : "5%" }}
               />
             </div>
             <p className="text-xs text-zinc-500 mt-1 text-center">
-              Generating keyframe {progress.current} of {progress.total}
+              {!progress
+                ? "Connecting..."
+                : progress.current === 1
+                  ? "AI is generating 4 keyframes in parallel..."
+                  : "Building animation frames..."}
             </p>
           </div>
         )}
