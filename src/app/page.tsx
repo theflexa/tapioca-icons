@@ -1,4 +1,5 @@
 import { UserButton } from "@clerk/nextjs";
+import { Generator } from "@/components/generator";
 
 export default function Home() {
   return (
@@ -7,7 +8,7 @@ export default function Home() {
         <h1 className="text-2xl font-bold">TapiocaIcons</h1>
         <UserButton />
       </header>
-      <p className="text-zinc-400">Generator coming soon...</p>
+      <Generator />
     </main>
   );
 }
