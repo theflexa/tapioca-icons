@@ -3,11 +3,14 @@
 import { useState } from "react";
 import type { AnimationType } from "@/lib/style-prompt";
 
+export type ExportResolution = 200 | 512 | 1024 | 2048;
+
 export interface StyleParams {
   animationType: AnimationType;
   duration: 2 | 3;
-  fps: 24 | 30 | 60 | 120;
+  fps: 60 | 120;
   accentColor: string;
+  exportResolution: ExportResolution;
 }
 
 interface StyleOptionsProps {
@@ -42,10 +45,14 @@ export function StyleOptions({ value, onChange, disabled }: StyleOptionsProps) {
               disabled={disabled}
               className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
             >
-              <option value="bounce">Bounce</option>
               <option value="float">Float</option>
+              <option value="bounce">Bounce</option>
               <option value="rotate">Rotate</option>
               <option value="pulse">Pulse</option>
+              <option value="flip">Flip</option>
+              <option value="page-turn">Page Turn</option>
+              <option value="orbit">Orbit</option>
+              <option value="tilt">Tilt</option>
             </select>
           </label>
 
@@ -66,14 +73,27 @@ export function StyleOptions({ value, onChange, disabled }: StyleOptionsProps) {
             <span className="text-xs text-zinc-400">FPS</span>
             <select
               value={value.fps}
-              onChange={(e) => update({ fps: Number(e.target.value) as 24 | 30 | 60 | 120 })}
+              onChange={(e) => update({ fps: Number(e.target.value) as 60 | 120 })}
               disabled={disabled}
               className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
             >
-              <option value={24}>24 fps</option>
-              <option value={30}>30 fps</option>
               <option value={60}>60 fps</option>
               <option value={120}>120 fps</option>
+            </select>
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-400">Export Resolution</span>
+            <select
+              value={value.exportResolution}
+              onChange={(e) => update({ exportResolution: Number(e.target.value) as ExportResolution })}
+              disabled={disabled}
+              className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
+            >
+              <option value={200}>200x200 (Web icon)</option>
+              <option value={512}>512x512 (Social)</option>
+              <option value={1024}>1024x1024 (HD)</option>
+              <option value={2048}>2048x2048 (2K)</option>
             </select>
           </label>
 
