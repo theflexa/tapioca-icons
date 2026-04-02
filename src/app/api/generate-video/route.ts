@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
 
   const videoCheck = await checkVideoUsage(userId, body.provider);
   if (!videoCheck.allowed) {
-    return NextResponse.json({ error: videoCheck.reason }, { status: 429 });
+    const reason = "reason" in videoCheck ? videoCheck.reason : "Video limit reached";
+    return NextResponse.json({ error: reason }, { status: 429 });
   }
 
   try {
