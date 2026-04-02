@@ -1,0 +1,15 @@
+{
+  "name": "tapioca-encoder",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "tapioca_encoder_bg.wasm",
+    "tapioca_encoder.js",
+    "tapioca_encoder.d.ts"
+  ],
+  "main": "tapioca_encoder.js",
+  "types": "tapioca_encoder.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

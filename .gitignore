@@ -37,9 +37,8 @@ yarn-error.log*
 .env.local
 .env*.local
 
-# wasm build output
+# wasm build output (only target, pkg is committed for Vercel)
 encoder/target/
-encoder/pkg/
 
 # vercel
 .vercel
