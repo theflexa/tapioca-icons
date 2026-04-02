@@ -101,7 +101,9 @@ export function Generator() {
       for (let j = 0; j < binary.length; j++) {
         bytes[j] = binary.charCodeAt(j);
       }
-      const blob = new Blob([bytes], { type: "image/png" });
+      // Detect MIME type from base64 header (JPEG starts with /9j/, PNG with iVBOR)
+      const mimeType = baseFrameB64.startsWith("/9j/") ? "image/jpeg" : "image/png";
+      const blob = new Blob([bytes], { type: mimeType });
       const cleanBlob = await removeImageBackground(blob);
       setProgress(80);
 

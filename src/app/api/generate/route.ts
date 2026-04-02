@@ -119,14 +119,16 @@ export async function POST(request: NextRequest) {
       keyframes,
       params: styleParams,
     });
-  } catch {
+  } catch (error) {
+    console.error("Generate icon error:", error);
     await db
       .update(generations)
       .set({ status: "failed" })
       .where(eq(generations.id, generation.id));
 
+    const message = error instanceof Error ? error.message : "Failed to generate icon";
     return NextResponse.json(
-      { error: "Failed to generate icon" },
+      { error: message },
       { status: 500 }
     );
   }
