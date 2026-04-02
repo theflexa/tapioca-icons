@@ -48,7 +48,9 @@ export function StyleOptions({ value, onChange, disabled }: StyleOptionsProps) {
               className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
             >
               <option value="3d">3D Clay</option>
-              <option value="pixel">Pixel Art</option>
+              <option value="pixel-8bit">Pixel Art (8-bit)</option>
+              <option value="pixel-16bit">Pixel Art (16-bit)</option>
+              <option value="pixel-32bit">Pixel Art (32-bit)</option>
               <option value="realistic">Realistic</option>
               <option value="retro">Retro</option>
             </select>

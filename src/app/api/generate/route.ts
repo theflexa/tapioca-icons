@@ -19,7 +19,7 @@ const generateSchema = z.object({
   fps: z.union([z.literal(60), z.literal(120)]).optional(),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   aiModel: z.string().max(50).optional(),
-  visualStyle: z.enum(["3d", "pixel", "realistic", "retro"]).optional(),
+  visualStyle: z.enum(["3d", "pixel-8bit", "pixel-16bit", "pixel-32bit", "realistic", "retro"]).optional(),
 });
 
 export async function POST(request: NextRequest) {

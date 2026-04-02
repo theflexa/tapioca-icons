@@ -41,11 +41,26 @@ describe("style prompt builder", () => {
     expect(result).toContain("photographic");
   });
 
-  it("builds pixel art style prompt", () => {
-    const result = buildStylePrompt("a sword", { visualStyle: "pixel" });
+  it("builds 8-bit pixel art style prompt", () => {
+    const result = buildStylePrompt("a sword", { visualStyle: "pixel-8bit" });
+    expect(result).toContain("pixel art");
+    expect(result).toContain("8-bit");
+    expect(result).toContain("chunky pixels");
+    expect(result).not.toContain("matte clay");
+  });
+
+  it("builds 16-bit pixel art style prompt", () => {
+    const result = buildStylePrompt("a sword", { visualStyle: "pixel-16bit" });
     expect(result).toContain("pixel art");
     expect(result).toContain("16-bit");
-    expect(result).not.toContain("matte clay");
+    expect(result).toContain("SNES");
+  });
+
+  it("builds 32-bit pixel art style prompt", () => {
+    const result = buildStylePrompt("a sword", { visualStyle: "pixel-32bit" });
+    expect(result).toContain("pixel art");
+    expect(result).toContain("32-bit");
+    expect(result).toContain("dithering");
   });
 
   it("builds realistic style prompt", () => {
@@ -61,8 +76,8 @@ describe("style prompt builder", () => {
   });
 
   it("returns style-specific negative prompts", () => {
-    expect(buildNegativePrompt("pixel")).toContain("smooth");
-    expect(buildNegativePrompt("pixel")).toContain("anti-aliased");
+    expect(buildNegativePrompt("pixel-8bit")).toContain("smooth");
+    expect(buildNegativePrompt("pixel-16bit")).toContain("anti-aliased");
     expect(buildNegativePrompt("realistic")).toContain("cartoon");
     expect(buildNegativePrompt("retro")).toContain("modern");
   });

@@ -1,6 +1,6 @@
 export type AnimationType = "bounce" | "float" | "rotate" | "pulse" | "flip" | "page-turn" | "orbit" | "tilt";
 
-export type VisualStyle = "3d" | "pixel" | "realistic" | "retro";
+export type VisualStyle = "3d" | "pixel-8bit" | "pixel-16bit" | "pixel-32bit" | "realistic" | "retro";
 
 interface StyleOptions {
   accentColor?: string;
@@ -23,14 +23,38 @@ const VISUAL_STYLES: Record<VisualStyle, string> = {
     "single centered object",
     "plain white background",
   ].join(", "),
-  pixel: [
+  "pixel-8bit": [
+    "pixel art icon",
+    "8-bit retro game style",
+    "very large chunky pixels",
+    "extremely limited color palette of 4 to 8 colors",
+    "no anti-aliasing",
+    "NES Gameboy era aesthetic",
+    "simple blocky shapes",
+    "single centered object",
+    "plain white background",
+  ].join(", "),
+  "pixel-16bit": [
     "pixel art icon",
     "16-bit retro game style",
     "crisp sharp pixels",
-    "limited color palette",
+    "limited color palette of 16 to 32 colors",
     "no anti-aliasing",
+    "SNES Sega Genesis era aesthetic",
     "isometric pixel view",
     "bright saturated colors",
+    "single centered object",
+    "plain white background",
+  ].join(", "),
+  "pixel-32bit": [
+    "pixel art icon",
+    "32-bit pixel art style",
+    "detailed pixel rendering",
+    "rich color palette",
+    "slight anti-aliasing on edges",
+    "PS1 GBA era aesthetic",
+    "isometric detailed view",
+    "smooth shading with dithering",
     "single centered object",
     "plain white background",
   ].join(", "),
@@ -59,7 +83,9 @@ const VISUAL_STYLES: Record<VisualStyle, string> = {
 
 const NEGATIVE_PROMPTS: Record<VisualStyle, string> = {
   "3d": "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects, text, watermark",
-  pixel: "smooth, anti-aliased, 3D, photographic, blurry, gradient, multiple objects, text, watermark",
+  "pixel-8bit": "smooth, anti-aliased, 3D, photographic, blurry, gradient, detailed, high resolution, multiple objects, text, watermark",
+  "pixel-16bit": "smooth, anti-aliased, 3D, photographic, blurry, gradient, multiple objects, text, watermark",
+  "pixel-32bit": "smooth, 3D render, photographic, blurry, multiple objects, text, watermark",
   realistic: "cartoon, anime, pixel art, low quality, blurry, deformed, multiple objects, text, watermark",
   retro: "modern, minimalist, photographic, 3D render, blurry, multiple objects, text, watermark",
 };
