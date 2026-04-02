@@ -19,3 +19,13 @@ export const rateLimits = pgTable("rate_limits", {
   lastResetHourly: timestamp("last_reset_hourly").defaultNow().notNull(),
   lastResetDaily: timestamp("last_reset_daily").defaultNow().notNull(),
 });
+
+export const videoUsage = pgTable("video_usage", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  provider: text("provider").notNull(),
+  dailyCount: integer("daily_count").default(0).notNull(),
+  monthlyCount: integer("monthly_count").default(0).notNull(),
+  lastResetDaily: timestamp("last_reset_daily").defaultNow().notNull(),
+  lastResetMonthly: timestamp("last_reset_monthly").defaultNow().notNull(),
+});
