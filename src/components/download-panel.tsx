@@ -7,8 +7,13 @@ import { renderFrames, getEffectiveFps } from "@/lib/three-renderer";
 import type { AnimationType } from "@/lib/style-prompt";
 
 interface DownloadPanelProps {
-  textureUrl: string | null;
-  animationType: AnimationType;
+  // 2D mode
+  textureUrl?: string | null;
+  animationType?: AnimationType;
+  // 3D mode
+  frames?: Uint8Array | null;
+  frameCount?: number;
+  // Common
   duration: number;
   fps: number;
   exportResolution: number;
@@ -30,20 +35,31 @@ export function DownloadPanel({
   duration,
   fps,
   exportResolution,
+  frames: directFrames,
+  frameCount: directFrameCount,
 }: DownloadPanelProps) {
   const [exporting, setExporting] = useState<string | null>(null);
 
-  if (!textureUrl) return null;
+  const is3D = !!directFrames && (directFrameCount ?? 0) > 0;
+  const is2D = !!textureUrl;
 
-  const effectiveFps = getEffectiveFps(exportResolution, fps);
-  const totalFrames = duration * effectiveFps;
-  const frameSize = exportResolution * exportResolution * 4;
+  if (!is3D && !is2D) return null;
+
+  const effectiveFps = is3D ? fps : getEffectiveFps(exportResolution, fps);
+  const totalFrames = is3D ? (directFrameCount ?? 0) : duration * effectiveFps;
+  // For 3D mode, frame size comes from the extracted frames (200x200)
+  const frameWidth = is3D ? 200 : exportResolution;
+  const frameHeight = is3D ? 200 : exportResolution;
+  const frameSize = frameWidth * frameHeight * 4;
   const webmSupported = typeof window !== "undefined" && isWebMSupported();
 
-  const getFrames = async () => {
+  const getFrames = async (): Promise<Uint8Array> => {
+    if (is3D) {
+      return directFrames!;
+    }
     return renderFrames({
-      textureUrl,
-      animationType,
+      textureUrl: textureUrl!,
+      animationType: animationType!,
       width: exportResolution,
       height: exportResolution,
       fps: effectiveFps,
@@ -54,10 +70,10 @@ export function DownloadPanel({
   const handleDownloadPng = async () => {
     setExporting("png");
     try {
-      const frames = await getFrames();
-      const firstFrame = frames.slice(0, frameSize);
-      const png = await encodePng(firstFrame, exportResolution, exportResolution);
-      downloadBlob(png, `tapioca-icon-${exportResolution}x${exportResolution}.png`, "image/png");
+      const allFrames = await getFrames();
+      const firstFrame = allFrames.slice(0, frameSize);
+      const png = await encodePng(firstFrame, frameWidth, frameHeight);
+      downloadBlob(png, `tapioca-icon-${frameWidth}x${frameHeight}.png`, "image/png");
     } finally {
       setExporting(null);
     }
@@ -66,18 +82,29 @@ export function DownloadPanel({
   const handleDownloadApng = async () => {
     setExporting("apng");
     try {
-      const apngFps = Math.min(effectiveFps, 60);
-      const apngFrames = duration * apngFps;
-      const frames = await renderFrames({
-        textureUrl,
-        animationType,
-        width: exportResolution,
-        height: exportResolution,
-        fps: apngFps,
-        duration,
-      });
-      const apng = await encodeApng(frames, exportResolution, exportResolution, apngFrames, apngFps);
-      downloadBlob(apng, `tapioca-icon-${exportResolution}x${exportResolution}.apng`, "image/apng");
+      let allFrames: Uint8Array;
+      let apngFps: number;
+      let apngFrames: number;
+
+      if (is3D) {
+        allFrames = directFrames!;
+        apngFps = Math.min(fps, 60);
+        apngFrames = directFrameCount!;
+      } else {
+        apngFps = Math.min(effectiveFps, 60);
+        apngFrames = duration * apngFps;
+        allFrames = await renderFrames({
+          textureUrl: textureUrl!,
+          animationType: animationType!,
+          width: exportResolution,
+          height: exportResolution,
+          fps: apngFps,
+          duration,
+        });
+      }
+
+      const apng = await encodeApng(allFrames, frameWidth, frameHeight, apngFrames, apngFps);
+      downloadBlob(apng, `tapioca-icon-${frameWidth}x${frameHeight}.apng`, "image/apng");
     } finally {
       setExporting(null);
     }
@@ -90,9 +117,9 @@ export function DownloadPanel({
     }
     setExporting("webm");
     try {
-      const frames = await getFrames();
-      const blob = await encodeWebM(frames, exportResolution, exportResolution, totalFrames, effectiveFps);
-      downloadBlob(blob, `tapioca-icon-${exportResolution}x${exportResolution}.webm`, "video/webm");
+      const allFrames = await getFrames();
+      const blob = await encodeWebM(allFrames, frameWidth, frameHeight, totalFrames, effectiveFps);
+      downloadBlob(blob, `tapioca-icon-${frameWidth}x${frameHeight}.webm`, "video/webm");
     } finally {
       setExporting(null);
     }
@@ -101,29 +128,39 @@ export function DownloadPanel({
   const handleDownloadSpritesheet = async () => {
     setExporting("spritesheet");
     try {
-      const sheetFps = 30;
-      const sheetFrames = duration * sheetFps;
-      const frames = await renderFrames({
-        textureUrl,
-        animationType,
-        width: exportResolution,
-        height: exportResolution,
-        fps: sheetFps,
-        duration,
-      });
-      const sheet = await createSpritesheet(frames, exportResolution, exportResolution, sheetFrames);
-      downloadBlob(sheet, `tapioca-icon-spritesheet-${exportResolution}x${exportResolution}.png`, "image/png");
+      let allFrames: Uint8Array;
+      let sheetFrames: number;
+
+      if (is3D) {
+        allFrames = directFrames!;
+        sheetFrames = directFrameCount!;
+      } else {
+        const sheetFps = 30;
+        sheetFrames = duration * sheetFps;
+        allFrames = await renderFrames({
+          textureUrl: textureUrl!,
+          animationType: animationType!,
+          width: exportResolution,
+          height: exportResolution,
+          fps: sheetFps,
+          duration,
+        });
+      }
+
+      const sheet = await createSpritesheet(allFrames, frameWidth, frameHeight, sheetFrames);
+      downloadBlob(sheet, `tapioca-icon-spritesheet-${frameWidth}x${frameHeight}.png`, "image/png");
     } finally {
       setExporting(null);
     }
   };
 
-  const fpsNote = exportResolution >= 2048 && fps > 60 ? " (capped to 60fps at 2048)" : "";
+  const fpsNote = !is3D && exportResolution >= 2048 && fps > 60 ? " (capped to 60fps at 2048)" : "";
 
   return (
     <div className="w-full space-y-3">
       <div className="text-xs text-zinc-500">
-        {exportResolution}x{exportResolution} | {totalFrames} frames | {effectiveFps}fps{fpsNote}
+        {frameWidth}x{frameHeight} | {totalFrames} frames | {effectiveFps}fps{fpsNote}
+        {is3D && " | 3D Animated"}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <button onClick={handleDownloadPng} disabled={!!exporting} className="px-4 py-2 bg-zinc-800 rounded-lg text-sm hover:bg-zinc-700 transition-colors disabled:opacity-50">
