@@ -19,7 +19,14 @@ async function fetchWithRetry(url: string, headers: HeadersInit = {}, retries = 
       continue;
     }
 
-    throw new Error(`Pollinations error: ${res.status} ${res.statusText} (after ${attempt} attempts)`);
+    // Get error details for non-retryable errors
+    let errorDetail = "";
+    try {
+      const body = await res.text();
+      errorDetail = `: ${body}`;
+    } catch {}
+
+    throw new Error(`Pollinations error: ${res.status} ${res.statusText} (after ${attempt} attempts)${errorDetail}`);
   }
 
   throw new Error("Pollinations: max retries exceeded");
@@ -34,10 +41,11 @@ export async function generateWithPollinations(
     height: "1024",
     model: options.model || "flux",
     nologo: "true",
+    quality: "hd",
   });
 
   if (options.negative) {
-    params.set("negative", options.negative);
+    params.set("negative_prompt", options.negative);
   }
   if (options.seed !== undefined) {
     params.set("seed", String(options.seed));
