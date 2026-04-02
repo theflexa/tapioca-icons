@@ -10,7 +10,7 @@ export const maxDuration = 300;
 
 const videoSchema = z.object({
   prompt: z.string().min(1).max(200),
-  provider: z.enum(["kling", "huggingface"]),
+  provider: z.enum(["huggingface"]),
   duration: z.union([z.literal(2), z.literal(3)]).optional(),
 });
 

@@ -3,7 +3,6 @@ import { getProviderLimit, isWithinVideoLimit, shouldResetDaily } from "@/lib/vi
 
 describe("video usage", () => {
   it("returns correct limits per provider", () => {
-    expect(getProviderLimit("kling")).toEqual({ daily: 66, monthly: Infinity });
     expect(getProviderLimit("huggingface")).toEqual({ daily: Infinity, monthly: 100 });
   });
 

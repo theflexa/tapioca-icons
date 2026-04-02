@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { AnimationType } from "@/lib/style-prompt";
 import type { IconCategory } from "./category-selector";
 
-export type VideoProvider = "kling" | "huggingface";
+export type VideoProvider = "huggingface";
 export type ExportResolution = 200 | 512 | 1024 | 2048;
 
 export interface StyleParams {
@@ -58,26 +58,12 @@ export function StyleOptions({ value, onChange, disabled, category, videoUsage }
       {open && (
         <div className="mt-3 grid grid-cols-2 gap-4 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
           {is3D && (
-            <label className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1">
               <span className="text-xs text-zinc-400">Video Provider</span>
-              <select
-                value={value.videoProvider}
-                onChange={(e) => update({ videoProvider: e.target.value as VideoProvider })}
-                disabled={disabled}
-                className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
-              >
-                <option value="kling">
-                  Kling ({videoUsage?.kling
-                    ? formatLimit(videoUsage.kling.dailyRemaining, 66, "today")
-                    : "66/66 today"})
-                </option>
-                <option value="huggingface">
-                  HuggingFace ({videoUsage?.huggingface
-                    ? formatLimit(videoUsage.huggingface.monthlyRemaining, 100, "month")
-                    : "100/100 month"})
-                </option>
-              </select>
-            </label>
+              <div className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100">
+                HuggingFace (free, rate-limited)
+              </div>
+            </div>
           )}
 
           {!is3D && (

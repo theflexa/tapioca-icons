@@ -16,7 +16,7 @@ const DEFAULT_STYLE: StyleParams = {
   accentColor: "#FF6B6B",
   exportResolution: 1024,
   aiModel: "flux",
-  videoProvider: "kling" as const,
+  videoProvider: "huggingface" as const,
 };
 
 type ProgressStage = "generating" | "removing-bg" | "generating-video" | "extracting";

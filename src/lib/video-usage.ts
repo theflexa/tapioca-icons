@@ -4,7 +4,6 @@ interface ProviderLimit {
 }
 
 const LIMITS: Record<string, ProviderLimit> = {
-  kling: { daily: 66, monthly: Infinity },
   huggingface: { daily: Infinity, monthly: 100 },
 };
 
