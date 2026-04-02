@@ -7,6 +7,39 @@ import { ThreePreview } from "./three-preview";
 import { DownloadPanel } from "./download-panel";
 import { removeImageBackground } from "@/lib/background-removal";
 
+// Pixel grid sizes per visual style
+const PIXEL_GRID: Record<string, number | null> = {
+  "pixel-8bit": 16,
+  "pixel-16bit": 32,
+  "pixel-32bit": 64,
+};
+
+// Pixelize an image by downscaling to grid size then upscaling with nearest-neighbor
+async function pixelizeImage(sourceBlob: Blob, gridSize: number): Promise<Blob> {
+  const img = await createImageBitmap(sourceBlob);
+  const sourceSize = Math.max(img.width, img.height);
+
+  // Step 1: Downscale to pixel grid size (this quantizes the pixels)
+  const downCanvas = document.createElement("canvas");
+  downCanvas.width = gridSize;
+  downCanvas.height = gridSize;
+  const downCtx = downCanvas.getContext("2d")!;
+  downCtx.imageSmoothingEnabled = false;
+  downCtx.drawImage(img, 0, 0, gridSize, gridSize);
+
+  // Step 2: Upscale back to original size with nearest-neighbor (crisp pixels)
+  const upCanvas = document.createElement("canvas");
+  upCanvas.width = sourceSize;
+  upCanvas.height = sourceSize;
+  const upCtx = upCanvas.getContext("2d")!;
+  upCtx.imageSmoothingEnabled = false;
+  upCtx.drawImage(downCanvas, 0, 0, sourceSize, sourceSize);
+
+  return new Promise<Blob>((resolve) => {
+    upCanvas.toBlob((b) => resolve(b!), "image/png");
+  });
+}
+
 const DEFAULT_STYLE: StyleParams = {
   animationType: "float",
   visualStyle: "3d",
@@ -70,9 +103,17 @@ export function Generator() {
       }
       const blob = new Blob([bytes], { type: "image/png" });
       const cleanBlob = await removeImageBackground(blob);
+      setProgress(80);
+
+      // Apply pixelization post-processing for pixel art styles
+      const gridSize = PIXEL_GRID[style.visualStyle] ?? null;
+      let finalBlob = cleanBlob;
+      if (gridSize) {
+        finalBlob = await pixelizeImage(cleanBlob, gridSize);
+      }
       setProgress(90);
 
-      const url = URL.createObjectURL(cleanBlob);
+      const url = URL.createObjectURL(finalBlob);
       setTextureUrl(url);
       setProgress(100);
     } catch (err) {

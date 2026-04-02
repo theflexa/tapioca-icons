@@ -41,25 +41,28 @@ describe("style prompt builder", () => {
     expect(result).toContain("photographic");
   });
 
-  it("builds 8-bit pixel art style prompt", () => {
+  it("builds 8-bit pixel art prompt with 16x16 grid", () => {
     const result = buildStylePrompt("a sword", { visualStyle: "pixel-8bit" });
     expect(result).toContain("pixel art");
     expect(result).toContain("8-bit");
-    expect(result).toContain("chunky pixels");
+    expect(result).toContain("16x16");
+    expect(result).toContain("chunky");
     expect(result).not.toContain("matte clay");
   });
 
-  it("builds 16-bit pixel art style prompt", () => {
+  it("builds 16-bit pixel art prompt with 32x32 grid", () => {
     const result = buildStylePrompt("a sword", { visualStyle: "pixel-16bit" });
     expect(result).toContain("pixel art");
     expect(result).toContain("16-bit");
+    expect(result).toContain("32x32");
     expect(result).toContain("SNES");
   });
 
-  it("builds 32-bit pixel art style prompt", () => {
+  it("builds 32-bit pixel art prompt with 64x64 grid", () => {
     const result = buildStylePrompt("a sword", { visualStyle: "pixel-32bit" });
     expect(result).toContain("pixel art");
     expect(result).toContain("32-bit");
+    expect(result).toContain("64x64");
     expect(result).toContain("dithering");
   });
 
