@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
@@ -53,10 +53,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: filtered.reason }, { status: 400 });
   }
 
-  // Rate limit (atomic check + increment)
-  const rateCheck = await checkAndIncrementRateLimit(userId);
-  if (!rateCheck.allowed) {
-    return NextResponse.json({ error: rateCheck.reason }, { status: 429 });
+  // Rate limit (skip for admin users)
+  const adminEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase());
+  const user = await currentUser();
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase();
+  const isAdmin = userEmail ? adminEmails.includes(userEmail) : false;
+
+  if (!isAdmin) {
+    const rateCheck = await checkAndIncrementRateLimit(userId);
+    if (!rateCheck.allowed) {
+      return NextResponse.json({ error: rateCheck.reason }, { status: 429 });
+    }
   }
 
   const animationType = body.animationType ?? "float";
