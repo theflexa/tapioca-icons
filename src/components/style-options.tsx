@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { AnimationType } from "@/lib/style-prompt";
+import type { AnimationType, VisualStyle } from "@/lib/style-prompt";
 
 export type ExportResolution = 200 | 512 | 1024 | 2048;
 
 export interface StyleParams {
   animationType: AnimationType;
+  visualStyle: VisualStyle;
   duration: 2 | 3;
   fps: 60 | 120;
   accentColor: string;
@@ -38,6 +39,21 @@ export function StyleOptions({ value, onChange, disabled }: StyleOptionsProps) {
 
       {open && (
         <div className="mt-3 grid grid-cols-2 gap-4 p-4 bg-zinc-900 rounded-lg border border-zinc-800">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-zinc-400">Visual Style</span>
+            <select
+              value={value.visualStyle}
+              onChange={(e) => update({ visualStyle: e.target.value as VisualStyle })}
+              disabled={disabled}
+              className="bg-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-100"
+            >
+              <option value="3d">3D Clay</option>
+              <option value="pixel">Pixel Art</option>
+              <option value="realistic">Realistic</option>
+              <option value="retro">Retro</option>
+            </select>
+          </label>
+
           <label className="flex flex-col gap-1">
             <span className="text-xs text-zinc-400">AI Model</span>
             <select

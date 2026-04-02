@@ -35,9 +35,35 @@ describe("style prompt builder", () => {
     expect(result).toContain("flip");
   });
 
-  it("returns a negative prompt", () => {
+  it("returns a negative prompt for default style", () => {
     const result = buildNegativePrompt();
     expect(result).toContain("realistic");
     expect(result).toContain("photographic");
+  });
+
+  it("builds pixel art style prompt", () => {
+    const result = buildStylePrompt("a sword", { visualStyle: "pixel" });
+    expect(result).toContain("pixel art");
+    expect(result).toContain("16-bit");
+    expect(result).not.toContain("matte clay");
+  });
+
+  it("builds realistic style prompt", () => {
+    const result = buildStylePrompt("a car", { visualStyle: "realistic" });
+    expect(result).toContain("photorealistic");
+    expect(result).toContain("studio photography");
+  });
+
+  it("builds retro style prompt", () => {
+    const result = buildStylePrompt("a phone", { visualStyle: "retro" });
+    expect(result).toContain("retro vintage");
+    expect(result).toContain("1970s");
+  });
+
+  it("returns style-specific negative prompts", () => {
+    expect(buildNegativePrompt("pixel")).toContain("smooth");
+    expect(buildNegativePrompt("pixel")).toContain("anti-aliased");
+    expect(buildNegativePrompt("realistic")).toContain("cartoon");
+    expect(buildNegativePrompt("retro")).toContain("modern");
   });
 });

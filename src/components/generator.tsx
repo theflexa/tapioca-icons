@@ -9,6 +9,7 @@ import { removeImageBackground } from "@/lib/background-removal";
 
 const DEFAULT_STYLE: StyleParams = {
   animationType: "float",
+  visualStyle: "3d",
   duration: 2,
   fps: 60,
   accentColor: "#FF6B6B",
@@ -48,6 +49,7 @@ export function Generator() {
           fps: style.fps,
           accentColor: style.accentColor,
           aiModel: style.aiModel,
+          visualStyle: style.visualStyle,
         }),
       });
 

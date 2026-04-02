@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { filterPrompt } from "@/lib/content-filter";
 import { checkAndIncrementRateLimit } from "@/lib/rate-limit";
-import { buildStylePrompt, AnimationType } from "@/lib/style-prompt";
+import { buildStylePrompt, buildNegativePrompt, AnimationType, VisualStyle } from "@/lib/style-prompt";
 import { generateImage } from "@/lib/ai/generate";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
@@ -19,6 +19,7 @@ const generateSchema = z.object({
   fps: z.union([z.literal(60), z.literal(120)]).optional(),
   accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   aiModel: z.string().max(50).optional(),
+  visualStyle: z.enum(["3d", "pixel", "realistic", "retro"]).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -79,14 +80,16 @@ export async function POST(request: NextRequest) {
 
   try {
     // Generate a single base frame (avoids Pollinations rate limiting)
+    const visualStyle = (body.visualStyle ?? "3d") as VisualStyle;
     const styledPrompt = buildStylePrompt(filtered.sanitized, {
       accentColor: body.accentColor,
       animationType,
+      visualStyle,
     });
 
     const baseSeed = Math.floor(Math.random() * 1000000);
     const result = await generateImage(styledPrompt, {
-      negative: "realistic, photographic, complex, detailed texture, noisy, blurry, dark, multiple objects, text, watermark",
+      negative: buildNegativePrompt(visualStyle),
       seed: baseSeed,
       model: body.aiModel,
     });
