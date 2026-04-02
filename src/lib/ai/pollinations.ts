@@ -7,9 +7,9 @@ export interface PollinationsOptions {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
 
-async function fetchWithRetry(url: string, retries = MAX_RETRIES): Promise<Response> {
+async function fetchWithRetry(url: string, headers: HeadersInit = {}, retries = MAX_RETRIES): Promise<Response> {
   for (let attempt = 1; attempt <= retries; attempt++) {
-    const res = await fetch(url, { signal: AbortSignal.timeout(60000) });
+    const res = await fetch(url, { headers, signal: AbortSignal.timeout(60000) });
 
     if (res.ok) return res;
 
@@ -46,7 +46,12 @@ export async function generateWithPollinations(
   const encoded = encodeURIComponent(prompt);
   const url = `https://image.pollinations.ai/prompt/${encoded}?${params.toString()}`;
 
-  const res = await fetchWithRetry(url);
+  const headers: HeadersInit = {};
+  if (process.env.POLLINATIONS_API_KEY) {
+    headers["Authorization"] = `Bearer ${process.env.POLLINATIONS_API_KEY}`;
+  }
+
+  const res = await fetchWithRetry(url, headers);
 
   const arrayBuffer = await res.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString("base64");
