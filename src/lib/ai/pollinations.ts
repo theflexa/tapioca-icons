@@ -44,7 +44,7 @@ export async function generateWithPollinations(
   }
 
   const encoded = encodeURIComponent(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?${params.toString()}`;
+  const url = `https://gen.pollinations.ai/image/${encoded}?${params.toString()}`;
 
   const headers: HeadersInit = {};
   if (process.env.POLLINATIONS_API_KEY) {
